@@ -1,0 +1,38 @@
+version: '2'
+
+services:
+  traefik:
+    image: "traefik:latest"
+    container_name: traefik
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./certs:/certs
+    command:
+      - "--log.level=DEBUG"
+      - "--certificatesresolvers.letsencrypt.acme.email=${EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/certs/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--providers.docker"
+      - "--providers.docker.exposedbydefault=false"
+    labels:
+      - "traefik.enable=true"
+
+      # Define middleware "redirect"
+      - "traefik.http.middlewares.redirect.redirectregex.permanent=false"
+      - "traefik.http.middlewares.redirect.redirectregex.regex=${REGEX}"
+      - "traefik.http.middlewares.redirect.redirectregex.replacement=${REPLACEMENT}"
+
+      # Create a catch-all http router
+      - "traefik.http.routers.http.middlewares=redirect"
+      - "traefik.http.routers.http.rule=PathPrefix(`/`)"
+
+      # Create a catch-all https router
+      - "traefik.http.routers.https.middlewares=redirect"
+      - "traefik.http.routers.https.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.https.tls=true"
+      - "traefik.http.routers.https.tls.certresolver=letsencrypt"
